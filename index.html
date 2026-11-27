@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>史莱姆 1024 · Slime 1024</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='17' r='13' fill='%23ff9fc0'/%3E%3Cellipse cx='12' cy='11' rx='5' ry='3.4' fill='%23fff' opacity='.55'/%3E%3Ccircle cx='11' cy='15' r='2.1' fill='%23422330'/%3E%3Ccircle cx='21' cy='15' r='2.1' fill='%23422330'/%3E%3Cpath d='M11.5 21q4.5 3.6 9 0' stroke='%23422330' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ================= 背景（远/中/近三层景深） ================= -->
+<div class="bg" aria-hidden="true">
+  <div class="bg-art"></div>
+  <div class="bg-glow"></div>
+  <div class="bg-grain"></div>
+</div>
+
+<div class="app">
+
+  <!-- ================= 顶部 HUD ================= -->
+  <header class="hud">
+    <div class="hud-left">
+      <div class="logo">
+        <span class="logo-ball"><i></i></span>
+        <div class="logo-text">
+          <b>史莱姆 1024</b>
+          <small>Slime 1024</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-center">
+      <div class="mode-switch" id="mode-switch">
+        <button data-mode="single" class="on">单局 · 通关</button>
+        <button data-mode="endless">无尽 · 冲分</button>
+      </div>
+    </div>
+
+    <div class="hud-right">
+      <div class="scoreboard" id="scoreboard">
+        <div class="score-main">
+          <span class="score-k">得分</span>
+          <b class="score-v" id="hud-score">0</b>
+        </div>
+        <div class="score-mini" id="score-mini">
+          <div class="mini">
+            <span class="mini-k">连击</span>
+            <b class="mini-v" id="hud-combo">—</b>
+          </div>
+          <div class="mini">
+            <span class="mini-k">下一个</span>
+            <b class="mini-v next-val" id="hud-next">1</b>
+          </div>
+        </div>
+        <button class="score-toggle" id="btn-score" title="收起 / 展开记分板" aria-label="收起或展开记分板">▾</button>
+      </div>
+      <div class="hud-btns">
+        <button class="icon-btn" id="btn-sound" title="音效 (M)">🔊 音效</button>
+        <button class="icon-btn" id="btn-pause" title="暂停 (P)">⏸ 暂停</button>
+        <button class="icon-btn panel-toggle" id="btn-panel" title="展开 / 收起面板" aria-label="展开或收起面板">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= 舞台 ================= -->
+  <main class="stage">
+    <div class="stage-canvas">
+      <canvas id="stage" width="480" height="760"></canvas>
+      <div class="hint" id="hint">
+        <b>点一下投放</b>
+        <span>两个一样的史莱姆碰到一起，会合成一只大一倍的</span>
+      </div>
+      <div class="toast" id="toast"></div>
+      <div class="rv-hint" id="rv-hint">点画面再看一次结果 · R 重开</div>
+    </div>
+
+    <aside class="side" id="side">
+      <div class="drawer-handle" id="drawer-handle" role="button" tabindex="0" aria-label="拖动或点击展开面板">
+        <span class="drawer-pill"></span>
+        <span class="drawer-label">面板</span>
+      </div>
+
+      <div class="drawer-top" id="drawer-top"></div>
+
+      <div class="card card-target">
+        <div class="card-h">本局目标</div>
+        <div class="target-line" id="hud-target">目标 1024</div>
+        <div class="target-max">当前最大球 <b id="hud-max">0</b></div>
+        <div class="target-hint" id="mode-hint">合成 1024 即通关</div>
+      </div>
+
+      <div class="card card-tools">
+        <div class="card-h">道具 <span class="tools-note">每局各 1 次</span></div>
+        <div class="tools" id="tools">
+          <button class="tool" data-tool="shake" title="摇一摇 · 让球重新落位 (1)" aria-label="摇一摇">
+            <span class="tool-ico">💫</span>
+            <span class="tool-n">1</span>
+          </button>
+          <button class="tool" data-tool="absorb" title="吸小球 · 吸走最小的一颗 (2)" aria-label="吸小球">
+            <span class="tool-ico">🧲</span>
+            <span class="tool-n">1</span>
+          </button>
+          <button class="tool" data-tool="reroll" title="换一个 · 重摇下一个球 (3)" aria-label="换一个">
+            <span class="tool-ico">🎲</span>
+            <span class="tool-n">1</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="card card-feel">
+        <div class="card-h">果冻手感 <span class="feel-now" id="feel-now">标准</span></div>
+        <input type="range" class="feel-range" id="feel"
+               min="0" max="100" step="1" value="50"
+               aria-label="果冻手感，从软糯到弹牙">
+        <div class="feel-scale"><span>软糯</span><span>弹牙</span></div>
+      </div>
+
+      <div class="card card-chain">
+        <div class="card-h">合并链</div>
+        <ol class="chain" id="chain-list"></ol>
+      </div>
+
+      <div class="card card-keys">
+        <div class="card-h">操作</div>
+        <ul class="keys">
+          <li><kbd>←</kbd><kbd>→</kbd> 移动落点</li>
+          <li><kbd>空格</kbd> 投放</li>
+          <li><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 使用道具</li>
+          <li><kbd>R</kbd> 重开</li>
+          <li><kbd>P</kbd> 暂停</li>
+          <li><kbd>M</kbd> 静音</li>
+          <li><kbd>Esc</kbd> 关结算</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+</div>
+
+<!-- ================= 结算 ================= -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <button class="modal-close" id="btn-close-result" title="关闭 (Esc)" aria-label="关闭">✕</button>
+    <div class="result-icon" id="result-icon">🎉</div>
+    <h2 class="result-title" id="result-title">史莱姆之王诞生了！</h2>
+    <p class="result-desc" id="result-desc"></p>
+    <div class="result-stats" id="result-stats"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="btn-again">再来一局</button>
+      <button class="btn" id="btn-mode">换个模式</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/vendor/matter.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/render.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
